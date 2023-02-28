@@ -1,0 +1,411 @@
+---
+title: "SDA Project"
+author: "Shubham Kanwar"
+date: "05/09/2022"
+output: 
+  pdf_document: 
+    toc: yes
+    fig_width: 10
+    fig_caption: yes
+    number_sections: no
+    fig_height: 6
+    fig_crop: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Statistics Project 
+
+We made the project of SDA, with the Wine Quality data set which we obtained form UCI machine learning
+repository. Dataset contains 12 predictors including dependent variable Quality.
+
+# 1. We did the exploratory data analysis.
+* **Data exploration**
+* **histogram and boxplot**
+* **outlier and correlation**
+
+# 2. Regression
+* **forward, backward selection**
+* **Backward with CV**
+* **Lasso and ridge regression model selection**
+* **prediction**
+
+# 3. Classification
+* **PCA**
+* **Logistic regression**
+* **Decision trees**
+* **boosting trees**
+* **randon forest**
+* **random forest CV**
+
+
+# EXPLORATORY ANALYSIS
+
+```{r wine}
+
+white_dat <- read.csv("C:/Users/straw/Documents/winequality-white.csv", sep = ";")
+attach(white_dat)
+```
+
+
+## Overview of Dataset:
+* **our data has 12 variables including our target variable "quality".**
+
+- Fixed Acidity: are non-volatile acids that do not evaporate readily.
+- Volatile Acidity: are high acetic acid in wine which leads to an unpleasant vinegar taste
+- Citric Acid: acts as a preservative to increase acidity. When in small quantities, adds freshness and flavor to wines.
+- Residual Sugar: is the amount of sugar remaining after fermentation stops. The key is to have a perfect balance between - sweetness and sourness. It is important to note that wines > 45g/ltrs are sweet.
+- Chlorides: the amount of salt in the wine.
+- Free Sulfur Dioxide: it prevents microbial growth and the oxidation of wine.
+- Total Sulfur Dioxide: is the amount of free + bound forms of SO2.
+- Density: sweeter wines have a higher density.
+- pH: describes the level of acidity on a scale of 0–14. Most wines are always between 3–4 on the pH scale.
+- Alcohol: available in small quantities in wines makes the drinkers sociable.
+- Sulphates: a wine additive that contributes to SO2 levels and acts as an antimicrobial and antioxidant.
+- Quality: which is the output variable/predictor.
+
+
+```{r attributes, echo=FALSE}
+names(white_dat)
+str(white_dat)
+summary(white_dat)
+dim(white_dat)
+```
+
+- Dataset contains 12 variables as mentioned above, which were recorded for 4898 observations
+- Target variable(quality) is discrete and categorical in nature. quality scale score ranges from 1 being poor to 10 being the best.
+- summary statistics shows variables are widely spread and almost all variables, excepts of alcohol has the outliers.
+- 1,2, 10 Quality ratings are not given to any wines, only scores obtained are between 3 to 9.
+- summary statistics shows that most of the variable has wide range compared to the IQR, which may indicate spread in data and presence of outliers.
+
+
+## lets check the spread of data
+``` {r plots, echo = FALSE}
+
+par(mfrow = c(2,2),oma = c(1,1,1,1) + 0.1)
+
+barplot(table(quality), col = c('blue', 'gray', 'slategray1', 'slategray4', 'darkgray'))
+mtext("Quality", side=1, outer = F, line = 2, cex = 0.8)
+hist(fixed.acidity, col = 'slategray')
+hist(volatile.acidity, col = 'slategray3')
+hist(citric.acid, col = 'slategray4')
+hist(residual.sugar, col = 'blue')
+hist(chlorides, col = 'blue1')
+hist(free.sulfur.dioxide, col = 'blue2')
+hist(total.sulfur.dioxide, col = 'red')
+hist(density, col = 'red1')
+hist(pH, col = 'red2')
+hist(sulphates, col = 'blue')
+hist(alcohol, col = 'red')
+```
+
+- The bar plot of the our dependent variable shows that the most of the quality is distributed around 5 to 7, with some one 4 and 8 as well. 
+- We note that all variables has positively skewed distributions. while, citric acid shows a peak at lower end.
+
+## Now we will try to see the data spread by making the boxplot of all the variables. To see if the outliers are present.
+
+```{r boxplots, echo = FALSE}
+par(mfrow = c(1, 5), mar = c(4,1,1,4) +0.9)
+boxplot(fixed.acidity, col = 'slategray3', pch = 18)
+mtext("Fixed Acidity", cex = 0.8, side = 1, line = 2 )
+boxplot(volatile.acidity, col = 'slategray', pch = 18)
+mtext("Volatile Acidity", cex = 0.8, side = 1, line = 2)
+boxplot(citric.acid, col = 'slategray', pch = 18)
+mtext("Citric Acid", cex = 0.8, side = 1, line = 2)
+boxplot(residual.sugar, col = 'slategray', pch = 18)
+mtext("Residual Sugar", cex = 0.8, side = 1, line = 2)
+boxplot(chlorides, col = 'slategray', pch = 18)
+mtext("Chlorides", cex = 0.8, side = 1, line = 2)
+boxplot(free.sulfur.dioxide, col = 'slategray', pch = 18)
+mtext("Free sulfur dioxide", cex = 0.8, side = 1, line = 2)
+boxplot(total.sulfur.dioxide, col = 'slategray', pch = 18)
+mtext("total sulfur dioxide", cex = 0.8, side = 1, line = 2)
+boxplot(density, col = 'slategray', pch = 18)
+mtext("Density", cex = 0.8, side = 1, line = 2)
+boxplot(pH, col = 'slategray', pch = 18)
+mtext("pH", cex = 0.8, side = 1, line = 2)
+boxplot(sulphates, col = 'slategray', pch = 18)
+mtext("Sulphates", cex = 0.8, side = 1, line = 2)
+boxplot(alcohol, col = 'slategray', pch = 18)
+mtext("Alcohol", cex = 0.8, side = 1, line = 2)
+
+```
+
+- Boxplot gives us the mean and median spread of the data.
+- It shows that all predictors except alcohol contains outliers.
+- if we remove these outliers our data maybe more symmetric.
+
+## scatterplot matrix
+
+``` {r}
+pairs(white_dat[, -grep('quality', colnames(white_dat))])
+
+```
+
+- It seems like most of the outliers are on higher end.
+- We will consider all that observation outlier that lie outside of 1.5 IQR range.
+
+## outlier detection
+
+
+``` {r outliers, echo = FALSE}
+white_outliers = c()
+for ( i in 1:11 ) {
+  stats = boxplot.stats(white_dat[[i]])$stats
+  bottom_outlier_rows = which(white_dat[[i]] < stats[1])         # bottom whisker
+  top_outlier_rows = which(white_dat[[i]] > stats[5])            # upper whisker
+  white_outliers = c(white_outliers , top_outlier_rows[ !top_outlier_rows %in% white_outliers ] )
+  white_outliers = c(white_outliers , bottom_outlier_rows[ !bottom_outlier_rows %in% white_outliers ] )
+  
+}
+
+```
+
+## influential observations by cooks distance
+
+```{r, cooks dist, echo=FALSE}
+linear_model <- lm(white_dat$quality~., data = white_dat)
+cooksdist_white <- cooks.distance(linear_model)
+plot(cooksdist_white, pch = "*", cex = 2, main = "influential obs by cooks distance")
+abline(h = 4* mean(cooksdist_white, na.rm = T), col = "Gray")
+
+
+### Now let's have a look at some of influential observations
+### Remember we considered the threshold 4 times the mean of cooksdist.
+head(white_dat[cooksdist_white> 4*mean(cooksdist_white, na.rm = T), ])
+
+
+```
+
+- This shows that row 99 and 252 has high residual sugar. 
+- Row 99 and 254 has very low free.sulphur.dioxide.
+
+```{r, outlier removal, echo=FALSE}
+
+cooksoutliers <- as.numeric(rownames(white_dat[cooksdist_white> 4* mean(cooksdist_white, na.rm = T), ]))
+
+all_outliers <- c(white_outliers, cooksoutliers[!cooksoutliers %in% white_outliers])
+
+cleandata_white <- white_dat[-all_outliers, ]
+dim(cleandata_white)
+
+```
+
+- Well that had an drastic effect on total dataset. We were able to remove around 1000 observation from dataset.
+- We call this new data as **cleandata_white** and it has 3999 observations.
+
+* **Removing around 1000 observations from data might has some noticeable effect on spread of data. Let's have a look again by making the histograms again** 
+
+```{r, histograms, echo=FALSE}
+par(mfrow = c(2,2))
+hist(cleandata_white$quality, col = 'slategray')
+hist(cleandata_white$fixed.acidity, col = 'slategray')
+hist(cleandata_white$volatile.acidity, col = 'slategray3')
+hist(cleandata_white$citric.acid, col = 'slategray4')
+hist(cleandata_white$residual.sugar, col = 'blue')
+hist(cleandata_white$chlorides, col = 'blue1')
+hist(cleandata_white$free.sulfur.dioxide, col = 'blue2')
+hist(cleandata_white$total.sulfur.dioxide, col = 'red')
+hist(cleandata_white$density, col = 'red1')
+hist(cleandata_white$pH, col = 'red2')
+hist(cleandata_white$sulphates, col = 'blue')
+hist(cleandata_white$alcohol, col = 'red')
+
+
+```
+
+* looking at the histogram plots now our distribution of spread look quite normal.
+* Expect for residual sugar which seems positivly skewed. We will have a look later on this one.
+
+## correlation
+
+```{r, correlation_matrix, echo=FALSE}
+pairs(cleandata_white, 
+      col = cleandata_white$quality,                     ### for color of points numberwise
+      pch = cleandata_white$quality)           ### changes the shape of points numberwise quantity
+
+
+```
+
+- only residual sugar/density and density/alcohol seems to have linear correlation.
+- seems like there's a trend in alcohol variable, higher the alcohol, high will be quality.
+- lower the density better the quality.
+
+```{r, correlation, echo=FALSE}
+library(dplyr)
+library(dplyr)
+library(magrittr)
+library(knitr)
+library(pander)
+library(ggcorrplot)
+library(ggplot2)
+
+c <- cor(
+  cleandata_white %>%                             # first we remove unwanted columns
+    mutate(                                       # now we translate quality to a number
+      quality = as.numeric(quality)
+    )
+)
+emphasize.strong.cells(which(abs(c) > .3 & c != 1, arr.ind = TRUE)) # emphasis on particular index.
+pandoc.table(c) # table wise correlation of every predictor with each other.
+
+ggcorrplot(c, hc.order = TRUE, type = "lower", lab = TRUE, insig = "blank") # plot for correlation.
+
+```
+
+- Correlation is between 1 to -1 both have significant. Here values in orange shows significant correlation and values in dark blue shows negative correlations.
+- There's strong correlation between residual.sugar/density. Also, moderate correlation between free.sulphur.doixide and total.sulphur.dioxide
+- Alcohol, density and chlorides are most correlated with target variable quality and citric acid, sulphates and free.sulphur.dioxide are least correlated.
+
+# Regression Analysis
+
+- fitting the model
+- Removing the Outlier from data and performing the correlation analysis we got that our dependent variable is highly correlated with some of the variables of our data.Now we will implement multiple linear regression to build an optimal model for the prediction of white wine quality.
+- Here we will try to find the optimal model by using variable model selection methods.
+
+### first we splitted our data in training data testing set. we used 80% of data for training and rest for testing the model.
+
+```{r, splitting, echo=FALSE}
+
+set.seed(1111)
+sample_80 <- round(nrow(cleandata_white)*0.8)
+index<- sample(seq_len(sample_80), size = sample_80)
+
+train_white <- cleandata_white[index, ] # training data 80% of the data is training
+test_white <- cleandata_white[-index, ] # Rest is test data
+dim(train_white)
+dim(test_white)
+
+```
+- 3199 observations will be used to train the model
+- 800 observations will be used to test the performance.
+
+Initial model performance on training data.
+
+```{r}
+wwfit <- lm(quality~., data = train_white) ## fitting the regression
+
+summary(wwfit)
+mean(wwfit$residuals^2)            # calculate the mean squared error
+
+```
+
+- from the summary function we in infer that most significat variables are fixed.acidity, volatile.acidity, residual.sugar, free.sulphur.dioxide, density, pH, sulphates and alocohol, citric.acid and total.sulfur.dioxide is not significant in this model.
+- MSE = 0.5352
+- adjusted R-squared = 0.2793
+
+## Model selection
+
+Now we will see if we can find the best variables by using model selection methods
+- Discrete methods like forward stepwise, backward stepwise , backward with cross-validation.
+
+Forward approach
+
+```{r}
+step(wwfit, direction = "forward", trace = FALSE)
+
+
+step.model_forward <- lm(quality ~ fixed.acidity + volatile.acidity + citric.acid + 
+  residual.sugar + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + 
+  density + pH + sulphates + alcohol, data = train_white) # fit with forward selection
+
+summary(step.model_forward)
+
+```
+
+Both approach
+
+```{r}
+library(MASS)
+stepAIC(wwfit, direction = "both", trace = FALSE)
+
+step.model_both <- lm(quality ~ fixed.acidity + volatile.acidity + residual.sugar + 
+                        chlorides + free.sulfur.dioxide + density + pH + sulphates + 
+                        alcohol, data = train_white) ## fitting both selection model
+
+
+summary(step.model_both)
+
+```
+
+Backward approach
+
+```{r}
+## backward approach
+step(wwfit, direction = "backward", trace = FALSE)
+
+step.model_backward <- lm(quality ~ fixed.acidity + volatile.acidity + residual.sugar + 
+                            chlorides + free.sulfur.dioxide + density + pH + sulphates + 
+                            alcohol, data = train_white) # fit with backward selection
+
+summary(step.model_backward)
+
+```
+
+- only in forward selection all the predictor were selected as best fit for model.
+- now we have applied all the resampling method. we will calculate the Rsquared for all the fit.
+
+```{r}
+ad.r.sq.1 <- summary(step.model_both)$adj.r.squared  # adjustedr-squared for both selection
+mse_1 <- mean(step.model_both$residuals^2)
+mse_1
+ad.r.sq.1
+ad.r.sq.2 <- summary(step.model_backward)$adj.r.squared  # adjustedr-squared for backward selection
+mse_2 <- mean(step.model_backward$residuals^2)
+ad.r.sq.2
+mse_2
+ad.r.sq.3 <- summary(step.model_forward)$adj.r.squared  # adjustedr-squared for forward selection
+mse_3 <- mean(step.model_forward$residuals^2)
+mse_3
+ad.r.sq.3
+
+```
+
+- adjustedR-squared for both selection is 0.2795494
+- Mean squared error for both approach is 0.5353107
+- adjustedR-squared for backward selection is 0.2795494
+- Mean squared error for backward approach is 0.5353107
+- adjustedR-squared for forward selection is 0.279273
+- Mean squared error for forward approach is .5351797
+
+- Which doesn't seem like considerable improvement for feature selection for our model.
+
+Also we can try parameter tuning for backward approach
+
+```{r}
+library(caret)
+library(leaps)
+library(modelr)
+
+train.control <- trainControl(method = "cv", number = 10)
+
+step_model_cv <- train(quality~., data = train_white,
+                       method = "leapBackward",             # backward selection
+                       tuneGrid = data.frame(nvmax = 5:11), # tuning parameters
+                       trControl = train.control)
+
+step_model_cv$results
+summary(step_model_cv$finalModel)
+ggplot(step_model_cv)
+
+
+```
+
+- we used nvmax from 5 to 11 to get the best model with 5 variables to 11 variables
+- Density and residual.sugar is always selected for best fit by crossvalidation in backward.
+- This model gives the best fit at 9 predictors. It is the point where model has the least
+- RMSE. there it leaves out total.sulfur.dioxide and citric.acid.
+- this result was also achieved by forward and backward selection before.
+- RMSE and MAE are two different metrics measuring the prediction error of each model. Lower
+- the RMSE and MAE the better the model.
+- R-squared indicates the correlation between the observed outcomes values predicted by the model.
+- Higher the R-squared better the model
+
+## Results of variables selection for modeling by forward, backward and both approaches
+- Evident from the feature selection we don't obtain a model with higher preformance.
+- coincidentally best so far is not found by any selection, but from manually including all the
+- predictors for the model selection.
+- hence for now best fit will be the model with all the available predictors i.e. 11 predictors.
+
